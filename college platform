@@ -1,0 +1,259 @@
+# CollegeDiscover — College Discovery Platform
+
+A full-stack college discovery and comparison platform built with Next.js, TypeScript, Prisma, and PostgreSQL.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14 (App Router), React, TypeScript, Tailwind CSS |
+| Backend | Next.js API Routes, TypeScript |
+| Validation | Zod |
+| ORM | Prisma |
+| Database | PostgreSQL (Neon) |
+| Auth | JWT + bcrypt |
+| Deployment | Vercel + Neon |
+
+## Features
+
+- **College listing + search** — full-text search across name, city, state with filters for type, rating, fee range. Paginated results.
+- **College detail page** — complete info with courses, placement history, and student reviews via tabs.
+- **Compare colleges** — side-by-side comparison of 2–3 colleges across all key metrics.
+- **Auth + saved colleges** — JWT-based registration/login, save and manage a personalized college list.
+
+## Getting Started
+
+### 1. Clone and install
+
+```bash
+git clone <your-repo>
+cd college-platform
+npm install
+```
+
+### 2. Set up environment variables
+
+```bash
+cp .env.example .env
+```
+
+Fill in your values in `.env`:
+
+```
+DATABASE_URL="postgresql://..."   # from Neon
+JWT_SECRET="your-secret-key"
+```
+
+### 3. Set up the database
+
+Create a free PostgreSQL database at [neon.tech](https://neon.tech), copy the connection string.
+
+```bash
+npm run db:push    # push schema to DB
+npm run db:seed    # seed with sample college data
+```
+
+### 4. Run locally
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+---
+
+## API Reference
+
+### Colleges
+
+#### `GET /api/colleges`
+
+Search and filter colleges.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `search` | string | Full-text search (name, city, state) |
+| `type` | `Government` \| `Private` \| `Deemed` \| `all` | College type |
+| `city` | string | Filter by city |
+| `state` | string | Filter by state |
+| `minFee` | number | Minimum fee in INR |
+| `maxFee` | number | Maximum fee in INR |
+| `minRating` | number (0–5) | Minimum rating |
+| `sortBy` | `rating` \| `totalFee` \| `name` \| `established` | Sort field |
+| `sortOrder` | `asc` \| `desc` | Sort direction |
+| `page` | number | Page number (default: 1) |
+| `limit` | number (1–50) | Results per page (default: 10) |
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "...",
+      "name": "IIT Delhi",
+      "city": "Delhi",
+      "state": "Delhi",
+      "type": "Government",
+      "rating": 4.8,
+      "totalFee": 200000,
+      "naacGrade": "A++"
+    }
+  ],
+  "pagination": {
+    "total": 50,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+#### `GET /api/colleges/:id`
+
+Get full college detail including courses, placements, reviews.
+
+**Response:**
+```json
+{
+  "id": "...",
+  "name": "IIT Delhi",
+  "about": "...",
+  "courses": [...],
+  "placements": [...],
+  "reviews": [...]
+}
+```
+
+---
+
+#### `GET /api/colleges/compare?ids=id1,id2,id3`
+
+Compare 2–3 colleges side by side.
+
+**Query parameters:**
+
+| Param | Description |
+|---|---|
+| `ids` | Comma-separated list of 2–3 college IDs |
+
+**Response:**
+```json
+{
+  "colleges": [...],
+  "summary": {
+    "highestRating": "IIT Delhi",
+    "lowestFee": "DTU",
+    "bestPlacement": "IIT Bombay"
+  }
+}
+```
+
+---
+
+### Auth
+
+#### `POST /api/auth/register`
+
+```json
+{ "name": "John Doe", "email": "john@example.com", "password": "securepassword" }
+```
+
+**Response:**
+```json
+{ "user": { "id": "...", "name": "John Doe", "email": "john@example.com" }, "token": "jwt..." }
+```
+
+---
+
+#### `POST /api/auth/login`
+
+```json
+{ "email": "john@example.com", "password": "securepassword" }
+```
+
+**Response:** Same as register.
+
+---
+
+### Saved Colleges
+
+All saved-college routes require `Authorization: Bearer <token>` header.
+
+#### `GET /api/saved`
+Returns list of saved colleges for the authenticated user.
+
+#### `POST /api/saved`
+```json
+{ "collegeId": "..." }
+```
+
+#### `DELETE /api/saved?collegeId=...`
+Removes a college from saved list.
+
+---
+
+## Database Schema
+
+```
+College       — core college data
+Course        — programs offered (→ College)
+Placement     — year-wise placement stats (→ College)
+Review        — student reviews (→ College)
+User          — registered users
+SavedCollege  — many-to-many: User ↔ College
+```
+
+## Deployment
+
+### Vercel (recommended)
+
+1. Push to GitHub
+2. Import the repo on [vercel.com](https://vercel.com)
+3. Add environment variables (`DATABASE_URL`, `JWT_SECRET`) in Vercel dashboard
+4. Deploy — Vercel auto-detects Next.js
+
+### Database (Neon)
+
+1. Create a free project at [neon.tech](https://neon.tech)
+2. Copy the connection string to `DATABASE_URL`
+3. Run `npm run db:push` and `npm run db:seed`
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── colleges/
+│   │   │   ├── route.ts          # GET /api/colleges
+│   │   │   ├── [id]/route.ts     # GET /api/colleges/:id
+│   │   │   └── compare/route.ts  # GET /api/colleges/compare
+│   │   ├── auth/
+│   │   │   ├── register/route.ts
+│   │   │   └── login/route.ts
+│   │   └── saved/route.ts        # GET, POST, DELETE /api/saved
+│   ├── colleges/
+│   │   ├── page.tsx              # Listing page
+│   │   └── [id]/page.tsx         # Detail page
+│   ├── compare/page.tsx
+│   ├── auth/page.tsx
+│   ├── saved/page.tsx
+│   └── page.tsx                  # Home
+├── components/ui/Navbar.tsx
+├── lib/
+│   ├── prisma.ts                 # Prisma singleton
+│   ├── auth.ts                   # JWT utilities
+│   ├── response.ts               # API response helpers
+│   └── validators.ts             # Zod schemas
+├── types/index.ts
+prisma/
+├── schema.prisma
+└── seed.ts
+```
